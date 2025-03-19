@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InSync - Sign Language Interpreter</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            color: white;
+            text-align: center;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            background: black;
+        }
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 0;
+            font-size: 22px;
+            z-index: 1000;
+        }
+        section {
+            padding: 100px 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background-size: cover;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            max-width: 700px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        video {
+            width: 80%;
+            max-width: 600px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>InSync - Sign Language Interpreter</header>
+
+    <section id="detection">
+        <div class="glass">
+            <h2>Sign Language Detection</h2>
+            <p>Real-time sign language recognition using AI</p>
+            <video id="video" autoplay></video>
+            <p id="output">Detected Sign: ...</p>
+        </div>
+    </section>
+
+    <script>
+        let model, classifier, video;
+        let labels = { 0: "Hello", 1: "Thank You", 2: "Yes", 3: "No" };
+
+        async function loadModel() {
+            model = await handpose.load(); // Load handpose model
+            classifier = knnClassifier.create(); // Create KNN classifier
+            console.log("Model loaded!");
+        }
+
+        async function setupCamera() {
+            video = document.getElementById('video');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            return new Promise(resolve => video.onloadedmetadata = resolve);
+        }
+
+        async function detectHand() {
+            if (!model || !video) return;
+            const predictions = await model.estimateHands(video);
+            if (predictions.length > 0) {
+                const embedding = predictions[0].landmarks.flat();
+                const result = await classifier.predictClass(tf.tensor(embedding));
+                document.getElementById('output').innerText = `Detected Sign: ${labels[result.label]}`;
+            }
+            requestAnimationFrame(detectHand);
+        }
+
+        async function main() {
+            await setupCamera();
+            await loadModel();
+            detectHand();
+        }
+
+        main();
+    </script>
+
+</body>
+</html>
